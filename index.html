@@ -1,42 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>DAP Technologies</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #0f172a;
-      color: white;
-      margin: 0;
-    }
-    h1 {
-      margin-top: 50px;
-      font-size: 3rem;
-    }
-    p {
-      font-size: 1.2rem;
-      color: #cbd5f5;
-    }
-    .btn {
-      margin-top: 20px;
-      padding: 10px 20px;
-      background: #22c55e;
-      color: black;
-      text-decoration: none;
-      border-radius: 5px;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAP Technologies</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0a0f1c;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* Main container */
+.container {
+    text-align: center;
+}
+
+/* Heading */
+h1 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #cbd5f5;
+}
+
+.logo {
+    font-size: 4rem;
+    font-weight: bold;
+    margin-bottom: 40px;
+    background: linear-gradient(90deg, #3b82f6, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Cards container */
+.cards {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+/* Individual card */
+.card {
+    background: #111827;
+    border-radius: 15px;
+    padding: 30px;
+    width: 150px;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    transition: 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 0 25px rgba(99,102,241,0.6);
+}
+
+/* Letter */
+.card h2 {
+    font-size: 3rem;
+    margin: 0;
+    background: linear-gradient(90deg, #3b82f6, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Text below */
+.card p {
+    margin-top: 10px;
+    font-size: 1rem;
+    color: #9ca3af;
+}
+</style>
+
 </head>
 <body>
 
-  <h1>DAP Technologies</h1>
-  <p>Deliver Anything Possible</p>
+<div class="container">
+    <h1>Welcome to</h1>
+    <div class="logo">DAP</div>
 
-  <a class="btn" href="#">Explore Tools</a>
+    <div class="cards">
+        <div class="card">
+            <h2>D</h2>
+            <p>Deliver</p>
+        </div>
+
+        <div class="card">
+            <h2>A</h2>
+            <p>Anything</p>
+        </div>
+
+        <div class="card">
+            <h2>P</h2>
+            <p>Possible</p>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
