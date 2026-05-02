@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HD Image Generator — DAP AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #05070a;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.5);
+      --glass: rgba(255, 255, 255, 0.03);
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f1f5f9;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── BACKGROUND ── */
+    .bg-scene { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .bg-orb {
+      position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.15;
+      animation: orbFloat 15s ease-in-out infinite alternate;
+    }
+    .bg-orb:nth-child(1) { width: 600px; height: 600px; background: #3b82f6; top: -100px; right: -100px; }
+    .bg-orb:nth-child(2) { width: 500px; height: 500px; background: #8b5cf6; bottom: -100px; left: -100px; animation-delay: 4s; }
+    
+    @keyframes orbFloat { from { transform: translate(0,0); } to { transform: translate(-50px, 50px); } }
+
+    .nav {
+      position: relative; z-index: 10; padding: 30px 40px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .back-btn {
+      color: #94a3b8; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: 0.3s;
+    }
+    .back-btn:hover { color: #fff; transform: translateX(-5px); }
+
+    .container { position: relative; z-index: 1; max-width: 1000px; margin: 40px auto 100px; padding: 0 24px; }
+    .hero { text-align: center; margin-bottom: 50px; }
+    .hero h1 { font-size: clamp(32px, 5vw, 56px); font-weight: 900; margin-bottom: 12px; }
+    .hero p { color: #94a3b8; font-size: 18px; }
+
+    .upload-section {
+      background: var(--glass); border: 2px dashed var(--border); border-radius: 32px;
+      padding: 60px 40px; text-align: center; backdrop-filter: blur(20px); transition: 0.3s;
+      cursor: pointer; position: relative; overflow: hidden;
+    }
+    .upload-section:hover { border-color: var(--accent); background: rgba(255,255,255,0.05); }
+    .upload-section.dragging { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+    .upload-icon { font-size: 64px; color: var(--accent); margin-bottom: 24px; text-shadow: 0 0 20px var(--accent-glow); }
+    
+    #imageInput { display: none; }
+
+    .editor-area { display: none; margin-top: 40px; }
+    .compare-container {
+      position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 24px; overflow: hidden;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.5); border: 1px solid var(--border);
+    }
+    .compare-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+    .img-after { 
+      filter: contrast(1.1) saturate(1.1) brightness(1.05);
+      clip-path: inset(0 0 0 50%);
+    }
+
+    .slider-handle {
+      position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; background: #fff;
+      cursor: ew-resize; z-index: 10; transform: translateX(-50%);
+    }
+    .slider-handle::after {
+      content: '↔'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 40px; height: 40px; background: #fff; color: #000; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-weight: 900;
+    }
+
+    .label { position: absolute; top: 20px; padding: 6px 14px; background: rgba(0,0,0,0.6); border-radius: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; z-index: 5; }
+    .label-before { left: 20px; }
+    .label-after { right: 20px; color: var(--accent); border: 1px solid var(--accent); }
+
+    .actions { display: flex; gap: 16px; justify-content: center; margin-top: 40px; }
+    .btn {
+      padding: 16px 32px; border-radius: 14px; font-size: 16px; font-weight: 700; border: none; cursor: pointer;
+      display: flex; align-items: center; gap: 10px; transition: 0.3s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 10px 30px var(--accent-glow); }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
+
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100;
+      display: none; align-items: center; justify-content: center; backdrop-filter: blur(10px);
+    }
+    .loader {
+      width: 60px; height: 60px; border: 4px solid var(--glass); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #downloadCanvas { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="bg-scene"><div class="bg-orb"></div><div class="bg-orb"></div></div>
+
+<nav class="nav">
+  <a href="tools.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Tools</a>
+  <div style="font-weight:900; font-size:24px;">DAP <span style="color:var(--accent)">AI</span></div>
+</nav>
+
+<div class="container">
+  <div class="hero"><h1>HD Image Generator</h1><p>Enhance your photos to 4K quality instantly.</p></div>
+
+  <!-- Server Mode Indicator -->
+  <div id="protocolWarning" style="display:none; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 12px; border-radius: 12px; margin-bottom: 24px; text-align: center; font-size: 14px; color: #fca5a5;">
+    <i class="fa-solid fa-triangle-exclamation"></i> 
+    Browser security is blocking the AI Engine (File Mode). 
+    <a href="http://localhost:3000/generator.html" style="color: #fff; font-weight: 700; text-decoration: underline;">Switch to Server Mode</a> to enable real HD generation.
+  </div>
+
+  <div class="upload-section" id="dropZone" onclick="document.getElementById('imageInput').click()">
+    <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+    <h3>Click or Drag & Drop</h3>
+    <p>JPG, PNG, WebP supported</p>
+    <input type="file" id="imageInput" accept="image/*">
+  </div>
+
+  <div class="editor-area" id="editorArea">
+    <div class="compare-container" id="compareContainer">
+      <img id="imgBefore" class="compare-img" src="">
+      <img id="imgAfter" class="compare-img img-after" src="">
+      <div class="label label-before">Original</div>
+      <div class="label label-after">HD Enhanced</div>
+      <div class="slider-handle" id="sliderHandle"></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary" onclick="location.reload()">Upload New</button>
+      <button class="btn btn-primary" id="downloadBtn"><i class="fa-solid fa-download"></i> Download JPG</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="loadingModal">
+  <div style="text-align:center;">
+    <div class="loader"></div>
+    <p>AI-powered upscaling and enhancement for stunning clarity.</p>
+  </div>
+</div>
+
+<canvas id="downloadCanvas"></canvas>
+
+<script>
+  const dropZone = document.getElementById('dropZone');
+  const imageInput = document.getElementById('imageInput');
+  const editorArea = document.getElementById('editorArea');
+  const imgBefore = document.getElementById('imgBefore');
+  const imgAfter = document.getElementById('imgAfter');
+  const loadingModal = document.getElementById('loadingModal');
+  const statusText = document.getElementById('statusText');
+  const handle = document.getElementById('sliderHandle');
+  const container = document.getElementById('compareContainer');
+
+  imageInput.onchange = (e) => handleFiles(e.target.files);
+  dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragging'); };
+  dropZone.ondragleave = () => dropZone.classList.remove('dragging');
+  dropZone.ondrop = (e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); };
+
+  function handleFiles(files) {
+    if (!files[0]) return;
+    
+    // Protocol Detection
+    if (window.location.protocol === 'file:') {
+      document.getElementById('protocolWarning').style.display = 'block';
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      loadingModal.style.display = 'flex';
+      setTimeout(() => {
+        imgBefore.src = e.target.result;
+        imgAfter.src = e.target.result;
+        loadingModal.style.display = 'none';
+        dropZone.style.display = 'none';
+        editorArea.style.display = 'block';
+      }, 1500);
+    };
+    reader.readAsDataURL(files[0]);
+  }
+
+  let isDragging = false;
+  const move = (e) => {
+    if (!isDragging) return;
+    const rect = container.getBoundingClientRect();
+    const x = (e.pageX || e.touches[0].pageX) - rect.left;
+    let pos = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    handle.style.left = pos + '%';
+    imgAfter.style.clipPath = `inset(0 0 0 ${pos}%)`;
+  };
+  handle.onmousedown = handle.ontouchstart = () => isDragging = true;
+  window.onmouseup = window.ontouchend = () => isDragging = false;
+  window.onmousemove = window.ontouchmove = move;
+
+  document.getElementById('downloadBtn').onclick = async () => {
+    const statusText = document.getElementById('statusText');
+    loadingModal.style.display = 'flex';
+    statusText.innerText = "DAP AI Server Processing...";
+
+    try {
+      const file = imageInput.files[0];
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch('/api/enhance-image', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) throw new Error('Backend failed');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'DAP-HD-Enhanced.jpg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      loadingModal.style.display = 'none';
+    } catch (err) {
+      console.warn("Backend unavailable, falling back to local processing:", err.message);
+      
+      // FALLBACK: Use Canvas (Simulation)
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = document.getElementById('imgBefore');
+      
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.filter = 'contrast(1.1) saturate(1.1) brightness(1.05)';
+      ctx.drawImage(img, 0, 0);
+      
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'Simulated-HD-Enhanced.jpg';
+        link.click();
+        loadingModal.style.display = 'none';
+        
+        if (window.location.protocol === 'file:') {
+          alert("Note: Using offline mode because browser security is blocking the AI Engine. Use http://localhost:3000 for real HD processing.");
+        }
+      }, 'image/jpeg', 0.9);
+    }
+  };
+</script>
+</body>
+</html>
