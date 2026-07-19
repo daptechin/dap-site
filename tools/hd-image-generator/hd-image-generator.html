@@ -575,32 +575,41 @@
                     <div class="input-group">
                         <label class="input-label">Enhancement Tuning</label>
                         <div class="parameter-card">
-                            <!-- Sharpening Slider -->
-                            <div class="slider-group">
-                                <div class="slider-header">
-                                    <span class="input-label" style="font-size: 0.75rem; color: #64748b;">Detail Sharpening</span>
-                                    <span class="slider-val" id="sharpen-val">40%</span>
-                                </div>
-                                <input type="range" id="sharpen-slider" class="range-input" min="0" max="100" value="40" oninput="updateSliderVal(this.value)">
-                            </div>
+                             <!-- Sharpening Slider -->
+                             <div class="slider-group">
+                                 <div class="slider-header">
+                                     <span class="input-label" style="font-size: 0.75rem; color: #64748b;">HD Sharpening (Remove Blur)</span>
+                                     <span class="slider-val" id="sharpen-val">60%</span>
+                                 </div>
+                                 <input type="range" id="sharpen-slider" class="range-input" min="0" max="100" value="60" oninput="updateSliderVal(this.value)">
+                             </div>
 
-                            <!-- Denoise Toggle -->
-                            <div class="toggle-row">
-                                <span class="input-label" style="font-size: 0.75rem; color: #64748b;">Smooth/Denoise Noise</span>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="denoise-toggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
+                             <!-- Saturation/Vibrancy Slider -->
+                             <div class="slider-group">
+                                 <div class="slider-header">
+                                     <span class="input-label" style="font-size: 0.75rem; color: #64748b;">Vibrancy / Color Saturation</span>
+                                     <span class="slider-val" id="saturation-val">40%</span>
+                                 </div>
+                                 <input type="range" id="saturation-slider" class="range-input" min="0" max="100" value="40" oninput="updateSaturationVal(this.value)">
+                             </div>
 
-                            <!-- Contrast Boost Toggle -->
-                            <div class="toggle-row">
-                                <span class="input-label" style="font-size: 0.75rem; color: #64748b;">Contrast Color Booster</span>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="contrast-toggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
+                             <!-- Denoise Toggle -->
+                             <div class="toggle-row">
+                                 <span class="input-label" style="font-size: 0.75rem; color: #64748b;">Smooth Denoise (Optional)</span>
+                                 <label class="toggle-switch">
+                                     <input type="checkbox" id="denoise-toggle">
+                                     <span class="toggle-slider"></span>
+                                 </label>
+                             </div>
+
+                             <!-- Contrast Boost Toggle -->
+                             <div class="toggle-row">
+                                 <span class="input-label" style="font-size: 0.75rem; color: #64748b;">Contrast Booster</span>
+                                 <label class="toggle-switch">
+                                     <input type="checkbox" id="contrast-toggle" checked>
+                                     <span class="toggle-slider"></span>
+                                 </label>
+                             </div>
                         </div>
                     </div>
                 </div>
@@ -765,6 +774,10 @@
             document.getElementById('sharpen-val').textContent = val + '%';
         }
 
+        function updateSaturationVal(val) {
+            document.getElementById('saturation-val').textContent = val + '%';
+        }
+
         function showToast(text) {
             const toast = document.getElementById('toast');
             document.getElementById('toast-text').textContent = text;
@@ -772,10 +785,8 @@
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
-        }
-
-        /* 3x3 Convolution algorithm for pixels processing */
-        function convolve(imgData, kernel, divisor = 1, offset = 0, contrastEnabled = false) {
+        }        /* 3x3 Convolution algorithm for pixels processing with contrast & saturation enhancements */
+        function convolve(imgData, kernel, divisor = 1, offset = 0, contrastEnabled = false, saturationFactor = 1.0) {
             const width = imgData.width;
             const height = imgData.height;
             const src = imgData.data;
@@ -785,7 +796,7 @@
             
             // Helper index calculation
             const getIndex = (x, y) => ((y * width) + x) * 4;
-            const contrastFactor = 1.15; // 15% contrast boost
+            const contrastFactor = 1.25; // Boosted contrast curve factor
 
             for (let y = 1; y < height - 1; y++) {
                 for (let x = 1; x < width - 1; x++) {
@@ -815,6 +826,14 @@
                         finalB = (finalB - 128) * contrastFactor + 128;
                     }
 
+                    // Apply saturation/vibrancy boost directly in RGB space
+                    if (saturationFactor !== 1.0) {
+                        const luminance = 0.299 * finalR + 0.587 * finalG + 0.114 * finalB;
+                        finalR = luminance + (finalR - luminance) * saturationFactor;
+                        finalG = luminance + (finalG - luminance) * saturationFactor;
+                        finalB = luminance + (finalB - luminance) * saturationFactor;
+                    }
+
                     // Clamp channels between 0-255
                     src[dstIdx]     = Math.min(255, Math.max(0, finalR));
                     src[dstIdx + 1] = Math.min(255, Math.max(0, finalG));
@@ -829,6 +848,7 @@
 
             const upscaleFactor = parseInt(document.getElementById('upscale-select').value);
             const sharpenPct = parseInt(document.getElementById('sharpen-slider').value) / 100.0;
+            const saturationPct = parseInt(document.getElementById('saturation-slider').value) / 100.0;
             const denoiseEnabled = document.getElementById('denoise-toggle').checked;
             const contrastEnabled = document.getElementById('contrast-toggle').checked;
             
@@ -889,15 +909,17 @@
                             convolve(imgData, smoothKernel, 10, 0, false);
                         }
 
-                        // 2. Convolution Sharpen details pass + Contrast Color booster combined
-                        // Sharpen matrix interpolates between identity (no sharpen) and Laplacian (max sharpen)
-                        const s = sharpenPct * 0.8; // scaling down factor slightly for natural details
+                        // 2. Convolution Sharpen details pass + Contrast + Saturation combined
+                        const saturationFactor = 1.0 + saturationPct; // 0% to 100% boost -> 1.0x to 2.0x
+                        
+                        // 8-way high-intensity sharpening kernel (aggressive blur removal)
+                        const s = sharpenPct * 1.2;
                         const sharpenKernel = [
-                            0,  -s,  0,
-                           -s, 1 + 4*s, -s,
-                            0,  -s,  0
+                            -s, -s, -s,
+                            -s, 1 + 8*s, -s,
+                            -s, -s, -s
                         ];
-                        convolve(imgData, sharpenKernel, 1, 0, contrastEnabled);
+                        convolve(imgData, sharpenKernel, 1, 0, contrastEnabled, saturationFactor);
 
                         // Put processed data back on canvas
                         ctx.putImageData(imgData, 0, 0);
